@@ -44,9 +44,15 @@ def arp_scan(network):
         if scanner[host].state() != "up":
             continue
 
+        mac = scanner[host]["addresses"].get("mac")
+        vendor = "Unknown"
+        if mac and "vendor" in scanner[host] and mac in scanner[host]["vendor"]:
+            vendor = scanner[host]["vendor"][mac]
+
         devices.append({
             "ip": str(ipaddress.IPv4Address(host)),
-            "mac": scanner[host]["addresses"].get("mac")
+            "mac": mac,
+            "vendor": vendor
         })
 
     return devices

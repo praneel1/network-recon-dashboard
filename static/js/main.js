@@ -2,10 +2,14 @@
 let chartCpu, chartRam, chartDisk;
 let globalSystemData = {};
 let globalNetworkData = {};
+let globalDiscoveredDevices = [];
+let d3Simulation = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initCharts();
     refreshDashboardData();
+    renderHistoryTags();
+    initTopologyGraph();
     // Auto refresh telemetry every 5 seconds
     setInterval(fetchSystemMetrics, 5000);
 });
@@ -60,6 +64,37 @@ function getAsciiProgressBar(percent, statusText = '') {
     return `${bar} ${percent}% -- ${statusText}`;
 }
 
+// Target History (localStorage)
+function saveTargetHistory(targetStr) {
+    if (!targetStr) return;
+    try {
+        let history = JSON.parse(localStorage.getItem('portatlas_history') || '[]');
+        if (!history.includes(targetStr)) {
+            history.unshift(targetStr);
+            if (history.length > 5) history.pop();
+            localStorage.setItem('portatlas_history', JSON.stringify(history));
+            renderHistoryTags();
+        }
+    } catch (e) {}
+}
+
+function renderHistoryTags() {
+    const container = document.getElementById('lanHistoryTags');
+    if (!container) return;
+    try {
+        const history = JSON.parse(localStorage.getItem('portatlas_history') || '[]');
+        if (history.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = 'Recent Targets: ' + history.map(t => `<span style="background:var(--bg-card-header); border:1px solid var(--border-color); padding:2px 6px; margin-right:4px; cursor:pointer; border-radius:2px;" onclick="useHistoryTarget('${t}')">${t}</span>`).join('');
+    } catch (e) {}
+}
+
+function useHistoryTarget(targetStr) {
+    document.getElementById('lanCidrInput').value = targetStr;
+}
+
 // Initialize Chart.js Gauges
 function initCharts() {
     const chartOptions = {
@@ -69,7 +104,6 @@ function initCharts() {
         plugins: { legend: { display: false } }
     };
 
-    // CPU Chart (#FF9F1C Orange Accent)
     chartCpu = new Chart(document.getElementById('chartCpu'), {
         type: 'doughnut',
         data: {
@@ -84,7 +118,6 @@ function initCharts() {
         options: chartOptions
     });
 
-    // RAM Chart (#5A189A Deep Purple Accent)
     chartRam = new Chart(document.getElementById('chartRam'), {
         type: 'doughnut',
         data: {
@@ -99,7 +132,6 @@ function initCharts() {
         options: chartOptions
     });
 
-    // Disk Chart (#7b2cbf Bright Purple Accent)
     chartDisk = new Chart(document.getElementById('chartDisk'), {
         type: 'doughnut',
         data: {
@@ -118,6 +150,7 @@ function initCharts() {
 // Log to terminal console
 function logToConsole(message, type = 'info') {
     const consoleBox = document.getElementById('terminalConsole');
+    if (!consoleBox) return;
     const line = document.createElement('div');
     line.className = `terminal-line ${type}`;
     const timestamp = new Date().toLocaleTimeString();
@@ -131,7 +164,7 @@ function clearConsole() {
     logToConsole('Console cleared.', 'info');
 }
 
-// Fetch System & Network Telemetry
+// Fetch Telemetry
 async function refreshDashboardData(btnEl) {
     setButtonLoading(btnEl || 'btnRefresh', true, 'Refreshing...');
     try {
@@ -158,7 +191,6 @@ async function fetchSystemMetrics() {
         let diskAvg = sys.disks.length > 0 ? sys.disks[0].percentage : 0;
         document.getElementById('diskPercentTxt').innerText = `${diskAvg}%`;
 
-        // Update Doughnuts
         chartCpu.data.datasets[0].data = [sys.cpu_usage, 100 - sys.cpu_usage];
         chartCpu.update();
 
@@ -168,7 +200,6 @@ async function fetchSystemMetrics() {
         chartDisk.data.datasets[0].data = [diskAvg, 100 - diskAvg];
         chartDisk.update();
 
-        // Populate Specs Grid
         const specsGrid = document.getElementById('sysSpecsGrid');
         specsGrid.innerHTML = `
             <div class="kv-item"><div class="kv-label">[HOSTNAME]</div><div class="kv-value">${sys.hostname}</div></div>
@@ -200,11 +231,12 @@ async function fetchNetworkMetrics() {
             document.getElementById('pingTargetIp').value = net.default_gateway || '8.8.8.8';
             document.getElementById('portTargetIp').value = net.ipv4;
             document.getElementById('svcTargetIp').value = net.ipv4;
+            document.getElementById('osTargetIp').value = net.ipv4;
+            document.getElementById('sslIp').value = net.ipv4;
             document.getElementById('bannerIp').value = net.ipv4;
             document.getElementById('httpIp').value = net.ipv4;
         }
 
-        // Populate Network Grid
         const netGrid = document.getElementById('netDetailsGrid');
         netGrid.innerHTML = `
             <div class="kv-item"><div class="kv-label">[ACTIVE_INTERFACE]</div><div class="kv-value">${net.active_interface || 'N/A'}</div></div>
@@ -254,18 +286,19 @@ async function executePing(btnEl) {
     }
 }
 
-// LAN Scan Trigger & Task Poller
+// LAN Scan & Topology Graph
 async function triggerLanScan(btnEl) {
     const cidr = document.getElementById('lanCidrInput').value;
     const mode = document.getElementById('lanScanMode').value;
     if (!cidr) return;
 
+    saveTargetHistory(cidr);
     const targetBtn = btnEl || 'btnLanScan';
     setButtonLoading(targetBtn, true, 'Scanning...');
     setScanStatus(true, "[SCANNING LAN]");
     document.getElementById('lanProgressBox').style.display = 'block';
 
-    logToConsole(`Executing $ netrecon --lan ${cidr} (${mode})...`, 'info');
+    logToConsole(`Executing $ portatlas --lan ${cidr} (${mode})...`, 'info');
 
     try {
         const res = await fetch('/api/scan/lan', {
@@ -281,8 +314,11 @@ async function triggerLanScan(btnEl) {
             }, (task) => {
                 setButtonLoading(targetBtn, false);
                 setScanStatus(false, "[SYSTEM READY]");
-                renderLanTable(task.result || []);
-                logToConsole(`LAN Scan complete. Discovered ${task.result ? task.result.length : 0} host(s).`, 'success');
+                const devices = task.result || [];
+                globalDiscoveredDevices = devices;
+                renderLanTable(devices);
+                updateTopologyGraph(devices);
+                logToConsole(`LAN Scan complete. Discovered ${devices.length} host(s).`, 'success');
             });
         } else {
             setButtonLoading(targetBtn, false);
@@ -298,7 +334,7 @@ async function triggerLanScan(btnEl) {
 function renderLanTable(devices) {
     const tbody = document.getElementById('lanDeviceTableBody');
     if (!devices || devices.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim);">No active hosts discovered on subnet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim);">No active hosts discovered on subnet.</td></tr>';
         return;
     }
 
@@ -307,6 +343,7 @@ function renderLanTable(devices) {
             <td><span class="badge badge-open">[UP]</span></td>
             <td><strong>${d.ip}</strong></td>
             <td>${d.mac || 'N/A'}</td>
+            <td><span class="badge badge-info">${d.vendor || 'Unknown'}</span></td>
             <td>${d.hostname || 'Unresolved'}</td>
             <td>
                 <button class="btn btn-sm btn-purple" onclick="setAndPortScan('${d.ip}')">Scan Ports</button>
@@ -316,10 +353,11 @@ function renderLanTable(devices) {
     `).join('');
 }
 
-// Port Scan Trigger & Poller
+// Port Scan Trigger & Timing Template
 async function triggerPortScan(btnEl) {
     const ip = document.getElementById('portTargetIp').value;
     const scanType = document.getElementById('portScanType').value;
+    const timing = parseInt(document.getElementById('portTiming').value || 4);
     const customPortsStr = document.getElementById('customPortList').value;
     
     let customPorts = [80, 443];
@@ -328,18 +366,19 @@ async function triggerPortScan(btnEl) {
     }
 
     if (!ip) return;
+    saveTargetHistory(ip);
 
     const targetBtn = btnEl || 'btnPortScan';
-    setButtonLoading(targetBtn, true, 'Auditing...');
-    setScanStatus(true, "[AUDITING PORTS]");
+    setButtonLoading(targetBtn, true, `Auditing (-T${timing})...`);
+    setScanStatus(true, `[AUDITING PORTS -T${timing}]`);
     document.getElementById('portProgressBox').style.display = 'block';
-    logToConsole(`Executing $ scan_ports -t ${ip} (${scanType})...`, 'info');
+    logToConsole(`Executing $ scan_ports -t ${ip} (${scanType}, -T${timing})...`, 'info');
 
     try {
         const res = await fetch('/api/scan/ports', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ip: ip, scan_type: scanType, ports: customPorts})
+            body: JSON.stringify({ip: ip, scan_type: scanType, ports: customPorts, timing: timing})
         });
         const json = await res.json();
         if (json.success) {
@@ -396,7 +435,7 @@ function setAndServiceScan(ip) {
     triggerServiceScan();
 }
 
-// Service Detection
+// Service Detection & CVE Mapping
 async function triggerServiceScan(btnEl) {
     const ip = document.getElementById('svcTargetIp').value;
     const portListStr = document.getElementById('svcPortList').value;
@@ -440,14 +479,77 @@ function renderServiceTable(services) {
         return;
     }
 
-    tbody.innerHTML = services.map(s => `
-        <tr>
-            <td><strong>Port ${s.port}</strong></td>
-            <td><span class="badge badge-info">[${(s.service || 'Unknown').toUpperCase()}]</span></td>
-            <td>${(s.product || '') + ' ' + (s.version || '')}</td>
-            <td>${s.extrainfo || '--'}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = services.map(s => {
+        let cveHtml = '--';
+        if (s.cves && s.cves.length > 0) {
+            cveHtml = s.cves.map(c => `<span class="badge badge-closed" title="${c.summary}">[${c.id}]</span>`).join(' ');
+        }
+        return `
+            <tr>
+                <td><strong>Port ${s.port}</strong></td>
+                <td><span class="badge badge-info">[${(s.service || 'Unknown').toUpperCase()}]</span></td>
+                <td>${(s.product || '') + ' ' + (s.version || '')}</td>
+                <td>${cveHtml}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// OS Detection & SSL Inspection
+async function triggerOsDetect(btnEl) {
+    const ip = document.getElementById('osTargetIp').value;
+    if (!ip) return;
+
+    setButtonLoading(btnEl || 'btnOsDetect', true, 'Fingerprinting...');
+    logToConsole(`Executing $ nmap -O ${ip}...`, 'info');
+
+    try {
+        const res = await fetch('/api/scan/os', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ip: ip})
+        });
+        const json = await res.json();
+        if (json.success && json.os_info) {
+            const os = json.os_info;
+            document.getElementById('osOutput').innerText = `${os.name || 'Unknown'} (Accuracy: ${os.accuracy || 0}%)`;
+            logToConsole(`OS Fingerprint match for ${ip} -> ${os.name}`, 'success');
+        } else {
+            document.getElementById('osOutput').innerText = 'No OS match found / Require admin privileges.';
+        }
+    } catch (e) {
+        logToConsole(`OS detect error: ${e.message}`, 'error');
+    } finally {
+        setButtonLoading(btnEl || 'btnOsDetect', false);
+    }
+}
+
+async function triggerSslInspect(btnEl) {
+    const ip = document.getElementById('sslIp').value;
+    const port = document.getElementById('sslPort').value || 443;
+    if (!ip) return;
+
+    setButtonLoading(btnEl || 'btnSslInspect', true, 'Inspecting...');
+    logToConsole(`Executing $ openssl s_client -connect ${ip}:${port}...`, 'info');
+
+    try {
+        const res = await fetch('/api/scan/ssl', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ip: ip, port: port})
+        });
+        const json = await res.json();
+        if (json.success && json.ssl_info) {
+            const cert = json.ssl_info;
+            document.getElementById('sslIssuer').innerText = `Issuer: ${cert.issuer || 'N/A'} | Subject: ${cert.subject || 'N/A'}`;
+            document.getElementById('sslValid').innerText = `Valid To: ${cert.valid_to || 'N/A'} | Cipher: ${cert.cipher || 'N/A'}`;
+            logToConsole(`SSL cert inspection completed for ${ip}:${port}.`, 'success');
+        }
+    } catch (e) {
+        logToConsole(`SSL inspect error: ${e.message}`, 'error');
+    } finally {
+        setButtonLoading(btnEl || 'btnSslInspect', false);
+    }
 }
 
 // Banner Grabber & HTTP Inspector
@@ -493,12 +595,8 @@ async function triggerHttpInspect(btnEl) {
         const json = await res.json();
         if (json.success && json.http_info) {
             const info = json.http_info;
-            document.getElementById('httpHeaderServer').innerText = info.server || 'Not disclosed';
-            document.getElementById('httpHeaderPowered').innerText = info.powered_by || 'Not disclosed';
             logToConsole(`HTTP Inspect result: Server=${info.server}, PoweredBy=${info.powered_by}`, 'success');
-        } else {
-            document.getElementById('httpHeaderServer').innerText = 'No response';
-            document.getElementById('httpHeaderPowered').innerText = 'No response';
+            document.getElementById('bannerOutput').innerText = `HTTP ${info.status} | Server: ${info.server || 'N/A'} | PoweredBy: ${info.powered_by || 'N/A'}`;
         }
     } catch (e) {
         logToConsole(`HTTP inspect error: ${e.message}`, 'error');
@@ -507,7 +605,79 @@ async function triggerHttpInspect(btnEl) {
     }
 }
 
-// Poller Helper
+// Interactive D3.js Topology Graph Renderer
+function initTopologyGraph() {
+    const svg = d3.select('#topologySvg');
+    if (svg.empty()) return;
+    svg.selectAll('*').remove();
+}
+
+function updateTopologyGraph(devices) {
+    const svg = d3.select('#topologySvg');
+    if (svg.empty()) return;
+    svg.selectAll('*').remove();
+
+    const width = svg.node().clientWidth || 600;
+    const height = svg.node().clientHeight || 350;
+
+    const nodes = [
+        { id: 'Gateway', label: globalNetworkData.default_gateway || 'Gateway', type: 'gateway' }
+    ];
+    const links = [];
+
+    devices.forEach((dev, idx) => {
+        const devId = dev.ip;
+        nodes.push({ id: devId, label: `${dev.ip} (${dev.hostname || 'Host'})`, type: 'host' });
+        links.push({ source: 'Gateway', target: devId });
+    });
+
+    const simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(90))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('center', d3.forceCenter(width / 2, height / 2));
+
+    const link = svg.append('g')
+        .attr('stroke', '#2b1f42')
+        .attr('stroke-width', 2)
+        .selectAll('line')
+        .data(links)
+        .enter().append('line');
+
+    const node = svg.append('g')
+        .selectAll('g')
+        .data(nodes)
+        .enter().append('g')
+        .call(d3.drag()
+            .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+            .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+            .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+    node.append('circle')
+        .attr('r', d => d.type === 'gateway' ? 12 : 8)
+        .attr('fill', d => d.type === 'gateway' ? '#FF9F1C' : '#5A189A')
+        .attr('stroke', '#FF9F1C')
+        .attr('stroke-width', d => d.type === 'gateway' ? 2 : 1);
+
+    node.append('text')
+        .text(d => d.label)
+        .attr('x', 14)
+        .attr('y', 4)
+        .attr('fill', '#f3ecfe')
+        .attr('font-size', '11px')
+        .attr('font-family', 'monospace');
+
+    simulation.on('tick', () => {
+        link
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+}
+
+// Task Poller
 function pollTask(taskId, onProgress, onComplete) {
     const interval = setInterval(async () => {
         try {
@@ -563,12 +733,34 @@ async function exportReconReport() {
         timestamp: new Date().toISOString(),
         system: globalSystemData,
         network: globalNetworkData,
+        devices: globalDiscoveredDevices
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `NetRecon_Report_${Date.now()}.json`);
+    downloadAnchor.setAttribute("download", `PortAtlas_Report_${Date.now()}.json`);
     downloadAnchor.click();
     downloadAnchor.remove();
     logToConsole('Exported Recon Report JSON.', 'success');
+}
+
+async function exportHtmlReport() {
+    logToConsole('Generating HTML Executive Report...', 'info');
+    try {
+        const res = await fetch('/api/report/html', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({system: globalSystemData, network: globalNetworkData})
+        });
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `PortAtlas_Recon_Report_${Date.now()}.html`;
+        a.click();
+        a.remove();
+        logToConsole('HTML Report downloaded successfully.', 'success');
+    } catch (e) {
+        logToConsole(`HTML report error: ${e.message}`, 'error');
+    }
 }

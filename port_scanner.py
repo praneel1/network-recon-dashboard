@@ -2,13 +2,13 @@ import nmap
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 
-def scan_ports(ip, ports):
+def scan_ports(ip, ports, timing=3):
     scanner = nmap.PortScanner()
 
     scanner.scan(
         hosts=str(ip),
         ports=",".join(map(str, ports)),
-        arguments="-Pn"
+        arguments=f"-Pn -T{timing}"
     )
 
     if str(ip) not in scanner.all_hosts():
@@ -28,15 +28,15 @@ def scan_ports(ip, ports):
 
     return results
 
-def scan_port(ip, port):
-    return scan_ports(ip, [port])[0]
+def scan_port(ip, port, timing=3):
+    return scan_ports(ip, [port], timing=timing)[0]
 
-def scan_top_ports(ip):
+def scan_top_ports(ip, timing=3):
     scanner = nmap.PortScanner()
 
     scanner.scan(
         hosts=str(ip),
-        arguments="-Pn --top-ports 1000"
+        arguments=f"-Pn --top-ports 1000 -T{timing}"
     )
 
     results = []
@@ -54,14 +54,12 @@ def scan_top_ports(ip):
 
     return sorted(results, key=lambda x: x["port"])
 
-import nmap
-
-def scan_all_ports(ip):
+def scan_all_ports(ip, timing=3):
     scanner = nmap.PortScanner()
 
     scanner.scan(
         hosts=str(ip),
-        arguments="-Pn -p-"
+        arguments=f"-Pn -p- -T{timing}"
     )
 
     results = []

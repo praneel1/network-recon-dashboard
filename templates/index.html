@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NetRecon // Terminal Bento Network Intelligence Dashboard</title>
+    <title>PortAtlas // Terminal Bento Network Intelligence Suite</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,6 +14,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- D3.js for Interactive Network Topology -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 </head>
 <body>
     <div class="app-container">
@@ -21,14 +23,14 @@
         <header class="top-bar glass-panel">
             <div class="brand">
                 <div class="ascii-header-banner">
-  _  _ ___ _____ ___ ___  ___ ___  _  _ 
- | \| | __|_   _| _ \ __|/ __/ _ \| \| |
- | .` | _|  | | |   / _| | (_| (_) | .` |
- |_|\_|___| |_| |_|_\___|\___\___/|_|\_|
+  ___  ___  ___ _____ _ _____ _    _   ___ 
+ | _ \/ _ \| _ \_   _/_\_   _| |  /_\ / __|
+ |  _/ (_) |   / | |/ _ \| | | |_/ _ \\__ \
+ |_|  \___/|_|_\ |_/_/ \_\_| |___/_/ \_\___/ v3.0
                 </div>
                 <div class="brand-text">
-                    <h1>NETRECON DASHBOARD</h1>
-                    <span>v2.5 // Terminal Bento Recon Engine</span>
+                    <h1>PORTATLAS RECON DASHBOARD</h1>
+                    <span>Terminal Bento Network Intelligence Suite</span>
                 </div>
             </div>
 
@@ -60,13 +62,13 @@
                 <i class="fa-solid fa-network-wired"></i> [02] Network
             </button>
             <button class="nav-btn" onclick="switchTab('tab-lan')">
-                <i class="fa-solid fa-sitemap"></i> [03] LAN Sweep
+                <i class="fa-solid fa-sitemap"></i> [03] LAN Sweep & Topology
             </button>
             <button class="nav-btn" onclick="switchTab('tab-ports')">
-                <i class="fa-solid fa-door-open"></i> [04] Port Scan
+                <i class="fa-solid fa-door-open"></i> [04] Port Audit
             </button>
             <button class="nav-btn" onclick="switchTab('tab-services')">
-                <i class="fa-solid fa-cubes"></i> [05] Service Recon
+                <i class="fa-solid fa-cubes"></i> [05] Service & OS Recon
             </button>
             <button class="nav-btn" onclick="switchTab('tab-terminal')">
                 <i class="fa-solid fa-terminal"></i> [06] Terminal
@@ -121,7 +123,6 @@
                 </div>
                 <div class="panel-body">
                     <div class="kv-grid" id="sysSpecsGrid">
-                        <!-- Populated by JS -->
                         <div class="kv-item"><div class="kv-label">[HOSTNAME]</div><div class="kv-value">Loading...</div></div>
                     </div>
                 </div>
@@ -163,7 +164,7 @@
             </div>
         </div>
 
-        <!-- TAB 3: LAN DISCOVERY -->
+        <!-- TAB 3: LAN DISCOVERY & TOPOLOGY GRAPH -->
         <div id="tab-lan" class="tab-content">
             <div class="glass-panel">
                 <div class="panel-header">
@@ -171,8 +172,8 @@
                     <span class="badge badge-info">[NMAP ARP/PING SWEEP]</span>
                 </div>
                 <div class="panel-body">
-                    <div class="control-bar" style="margin-bottom: 12px;">
-                        <span class="prompt-symbol">$ netrecon --lan</span>
+                    <div class="control-bar" style="margin-bottom: 8px;">
+                        <span class="prompt-symbol">$ portatlas --lan</span>
                         <input type="text" id="lanCidrInput" class="form-input" placeholder="192.168.1.0/24">
                         
                         <span class="prompt-symbol">--mode</span>
@@ -187,12 +188,17 @@
                         </button>
                     </div>
 
+                    <!-- Target History Tags -->
+                    <div id="lanHistoryTags" style="margin-bottom: 12px; font-size: 11px; color: var(--text-muted);">
+                        <!-- Saved localStorage targets -->
+                    </div>
+
                     <!-- Progress Indicator -->
                     <div id="lanProgressBox" style="display: none; margin-bottom: 14px;">
                         <div id="lanProgressBarTxt" class="ascii-progress-text">[░░░░░░░░░░░░░░░░░░░░] 0% -- Initializing LAN scan...</div>
                     </div>
 
-                    <!-- Device Table -->
+                    <!-- Device Table with MAC Vendor -->
                     <div class="table-responsive">
                         <table class="custom-table">
                             <thead>
@@ -200,16 +206,30 @@
                                     <th>+ STATUS</th>
                                     <th>+ IP ADDRESS</th>
                                     <th>+ MAC ADDRESS</th>
+                                    <th>+ VENDOR (OUI)</th>
                                     <th>+ HOSTNAME</th>
                                     <th>+ ACTIONS</th>
                                 </tr>
                             </thead>
                             <tbody id="lanDeviceTableBody">
                                 <tr>
-                                    <td colspan="5" style="text-align: center; color: var(--text-dim);">No devices discovered yet. Execute "$ netrecon --lan" to run a scan.</td>
+                                    <td colspan="6" style="text-align: center; color: var(--text-dim);">No devices discovered yet. Execute "$ portatlas --lan" to run a scan.</td>
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- D3.js Interactive Network Topology Graph Bento Card -->
+            <div class="glass-panel">
+                <div class="panel-header">
+                    <div class="panel-title">┌─[ 03.2 // INTERACTIVE_NETWORK_TOPOLOGY_MAP ]</div>
+                    <span class="badge badge-info">[D3.JS FORCE GRAPH]</span>
+                </div>
+                <div class="panel-body">
+                    <div style="width: 100%; height: 350px; background: #050308; border: 1px solid var(--border-color); border-radius: 4px; position: relative; overflow: hidden;">
+                        <svg id="topologySvg" style="width: 100%; height: 100%;"></svg>
                     </div>
                 </div>
             </div>
@@ -232,6 +252,15 @@
                             <option value="top1000">Top 1000 Ports (--top-ports)</option>
                             <option value="custom">Custom Specified Ports</option>
                             <option value="all">Full Audit (1-65535)</option>
+                        </select>
+
+                        <span class="prompt-symbol">-T</span>
+                        <select id="portTiming" class="form-select" title="Nmap Timing Template (-T1 to -T5)">
+                            <option value="3">T3 (Normal)</option>
+                            <option value="4" selected>T4 (Aggressive Speed)</option>
+                            <option value="5">T5 (Insane Speed)</option>
+                            <option value="2">T2 (Sneaky)</option>
+                            <option value="1">T1 (Paranoid Stealth)</option>
                         </select>
 
                         <input type="text" id="customPortList" class="form-input" placeholder="80,443,8080" style="display: none;">
@@ -268,12 +297,13 @@
             </div>
         </div>
 
-        <!-- TAB 5: SERVICE RECON -->
+        <!-- TAB 5: SERVICE & OS RECON -->
         <div id="tab-services" class="tab-content">
             <div class="grid-2">
+                <!-- Nmap Service Versioning + CVE Lookup -->
                 <div class="glass-panel">
                     <div class="panel-header">
-                        <div class="panel-title">┌─[ 05.1 // NMAP_SERVICE_VERSIONING ]</div>
+                        <div class="panel-title">┌─[ 05.1 // SERVICE_VERSIONING_&_CVE_MAPPING ]</div>
                     </div>
                     <div class="panel-body">
                         <div class="control-bar" style="margin-bottom: 12px;">
@@ -292,7 +322,7 @@
                                         <th>+ PORT</th>
                                         <th>+ SERVICE</th>
                                         <th>+ PRODUCT / VERSION</th>
-                                        <th>+ EXTRA INFO</th>
+                                        <th>+ CVE INTELLIGENCE</th>
                                     </tr>
                                 </thead>
                                 <tbody id="svcTableBody">
@@ -303,37 +333,60 @@
                     </div>
                 </div>
 
+                <!-- OS Fingerprinting & SSL Certificate Inspector -->
                 <div class="glass-panel">
                     <div class="panel-header">
-                        <div class="panel-title">┌─[ 05.2 // BANNER_GRABBER_&_HTTP_INSPECTOR ]</div>
+                        <div class="panel-title">┌─[ 05.2 // OS_FINGERPRINT_&_SSL_INSPECTOR ]</div>
                     </div>
                     <div class="panel-body">
+                        <!-- OS Fingerprint Widget -->
                         <div style="margin-bottom: 16px;">
-                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[TCP BANNER GRABBER]</h4>
+                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[NMAP PASSIVE OS FINGERPRINTING (-O)]</h4>
                             <div class="control-bar">
-                                <span class="prompt-symbol">$ nc -v</span>
-                                <input type="text" id="bannerIp" class="form-input" placeholder="IP" style="min-width: 120px;">
-                                <input type="number" id="bannerPort" class="form-input" placeholder="22" style="min-width: 70px;">
-                                <button class="btn btn-sm btn-emerald" id="btnBannerGrab" onclick="triggerBannerGrab(this)">Grab Banner</button>
+                                <span class="prompt-symbol">$ nmap -O</span>
+                                <input type="text" id="osTargetIp" class="form-input" placeholder="Target IP">
+                                <button class="btn btn-sm btn-purple" id="btnOsDetect" onclick="triggerOsDetect(this)">Detect OS</button>
                             </div>
                             <div class="kv-item" style="margin-top: 8px;">
-                                <div class="kv-label">[RAW BANNER RESULT]</div>
-                                <div id="bannerOutput" class="kv-value" style="font-size: 11px; color: #34d399;">--</div>
+                                <div class="kv-label">[DETECTED OS MATCH]</div>
+                                <div id="osOutput" class="kv-value" style="font-size: 11px; color: var(--accent-orange);">--</div>
                             </div>
                         </div>
 
                         <hr style="border-color: var(--border-color); margin: 16px 0;">
 
-                        <div>
-                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[HTTP HEADER ANALYZER]</h4>
+                        <!-- SSL Certificate Inspector Widget -->
+                        <div style="margin-bottom: 16px;">
+                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[SSL/TLS CERTIFICATE INSPECTOR]</h4>
                             <div class="control-bar">
-                                <span class="prompt-symbol">$ curl -I</span>
-                                <input type="text" id="httpIp" class="form-input" placeholder="Target Host / IP">
-                                <button class="btn btn-sm btn-purple" id="btnHttpInspect" onclick="triggerHttpInspect(this)">Inspect Headers</button>
+                                <span class="prompt-symbol">$ openssl s_client</span>
+                                <input type="text" id="sslIp" class="form-input" placeholder="IP" style="min-width: 120px;">
+                                <input type="number" id="sslPort" class="form-input" placeholder="443" style="min-width: 65px;" value="443">
+                                <button class="btn btn-sm btn-emerald" id="btnSslInspect" onclick="triggerSslInspect(this)">Inspect Cert</button>
                             </div>
-                            <div class="kv-grid" id="httpResultGrid" style="margin-top: 8px;">
-                                <div class="kv-item"><div class="kv-label">[SERVER HEADER]</div><div class="kv-value" id="httpHeaderServer">--</div></div>
-                                <div class="kv-item"><div class="kv-label">[X-POWERED-BY]</div><div class="kv-value" id="httpHeaderPowered">--</div></div>
+                            <div class="kv-grid" id="sslResultGrid" style="margin-top: 8px;">
+                                <div class="kv-item"><div class="kv-label">[ISSUER / SUBJECT]</div><div class="kv-value" id="sslIssuer">--</div></div>
+                                <div class="kv-item"><div class="kv-label">[VALIDITY / CIPHER]</div><div class="kv-value" id="sslValid">--</div></div>
+                            </div>
+                        </div>
+
+                        <hr style="border-color: var(--border-color); margin: 16px 0;">
+
+                        <!-- Banner & HTTP Inspector -->
+                        <div>
+                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[BANNER & HTTP INSPECTOR]</h4>
+                            <div class="control-bar">
+                                <span class="prompt-symbol">$ nc -v</span>
+                                <input type="text" id="bannerIp" class="form-input" placeholder="IP" style="min-width: 100px;">
+                                <input type="number" id="bannerPort" class="form-input" placeholder="22" style="min-width: 60px;" value="22">
+                                <button class="btn btn-sm btn-emerald" id="btnBannerGrab" onclick="triggerBannerGrab(this)">Banner</button>
+                                
+                                <span class="prompt-symbol">$ curl -I</span>
+                                <button class="btn btn-sm btn-purple" id="btnHttpInspect" onclick="triggerHttpInspect(this)">HTTP Header</button>
+                            </div>
+                            <div class="kv-item" style="margin-top: 8px;">
+                                <div class="kv-label">[RAW RESULT]</div>
+                                <div id="bannerOutput" class="kv-value" style="font-size: 11px; color: #34d399;">--</div>
                             </div>
                         </div>
                     </div>
@@ -341,19 +394,20 @@
             </div>
         </div>
 
-        <!-- TAB 6: TERMINAL LOGS -->
+        <!-- TAB 6: TERMINAL LOGS & EXPORT -->
         <div id="tab-terminal" class="tab-content">
             <div class="glass-panel">
                 <div class="panel-header">
-                    <div class="panel-title">┌─[ 06.1 // REALTIME_SCAN_CONSOLE ]</div>
+                    <div class="panel-title">┌─[ 06.1 // REALTIME_SCAN_CONSOLE_&_EXPORTS ]</div>
                     <div style="display: flex; gap: 8px;">
                         <button class="btn btn-sm" onclick="clearConsole()"><i class="fa-solid fa-trash"></i> Clear</button>
-                        <button class="btn btn-sm btn-emerald" onclick="exportReconReport()"><i class="fa-solid fa-download"></i> Export JSON</button>
+                        <button class="btn btn-sm btn-emerald" onclick="exportReconReport()"><i class="fa-solid fa-file-code"></i> Export JSON</button>
+                        <button class="btn btn-sm btn-purple" onclick="exportHtmlReport()"><i class="fa-solid fa-file-pdf"></i> Export HTML Report</button>
                     </div>
                 </div>
                 <div class="panel-body">
                     <div class="terminal-box" id="terminalConsole">
-                        <div class="terminal-line info">[SYS] NetRecon Terminal Console active. Log stream initialized.</div>
+                        <div class="terminal-line info">[SYS] PortAtlas Terminal Console active. Log stream initialized.</div>
                     </div>
                 </div>
             </div>
