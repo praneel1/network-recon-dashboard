@@ -16,43 +16,33 @@ It integrates all custom network scanning, device discovery, port scanning, serv
 - **🚪 Port Scanner**: Common ports, top-1000 ports, and custom specified port audits with protocol & state breakdown.
 - **🛡️ Service & Web Recon**: Nmap service version detection, raw TCP banner grabbing, and HTTP server header inspector (`Server`, `X-Powered-By`).
 - **💻 Console Log Terminal & Export**: Real-time scan log terminal with export options to full JSON reports.
-- **☁️ Free Tier Ready**: Consumes < 20MB RAM, ideal for deployment on Render, Railway, HuggingFace Spaces, PythonAnywhere, or Docker.
 
 ---
 
 ## 🛠️ Local Installation & Setup
 
-1. **Install Dependencies**:
+1. **Clone the repository**: ```git clone ...```
+2. **Install Dependencies**:
    ```bash
    uv pip install -r requirements.txt
    # OR with pip:
    pip install -r requirements.txt
    ```
 
-2. **Ensure Nmap is Installed** (Recommended for advanced port scanning and service detection):
+3. **Ensure Nmap is Installed** (Recommended for advanced port scanning and service detection):
    - **Windows**: Download & install Nmap from [nmap.org](https://nmap.org/download.html). Ensure `nmap.exe` is added to system `PATH`.
    - **Linux / macOS**: `sudo apt update && sudo apt install -y nmap` or `brew install nmap`.
 
-3. **Run Dashboard**:
+4. **Run Dashboard**:
    ```bash
    uv run python app.py
+   # OR with python:
+   python app.py
    ```
    Open your browser at `http://127.0.0.1:5000`.
 
 ---
 
-## ☁️ Deployment on Free Tier Hosting Services
-
-### 1. Render / Railway / Heroku
-- Connect your GitHub repository.
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `gunicorn app:app` (or automatically picked up via `Procfile`).
-
-### 2. Hugging Face Spaces (Docker / Streamlit / Docker SDK)
-- Create a new Space with `Docker` or `Python` SDK.
-- Point to `app.py` or use Docker container with `nmap` pre-installed.
-
----
 
 ## 📂 Project Architecture
 
