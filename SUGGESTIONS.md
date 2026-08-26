@@ -47,3 +47,14 @@ This document outlines recommended future improvements, feature additions, and o
     - Store previous scan targets in browser `localStorage` for quick re-scanning.
 
 ---
+
+## 🖥️ 4. Desktop Packaging
+
+11. **Bundle Nmap with the portable exe**
+    - Ship a private `nmap.exe` next to the frozen Flask backend so ARP / version scans work without a system Nmap install.
+    - Respect Nmap license terms if redistributing.
+
+12. **Optional admin manifest**
+    - Offer a second build with `requestedExecutionLevel: requireAdministrator` for scan types that need raw sockets on Windows.
+
+---

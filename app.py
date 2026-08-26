@@ -1,4 +1,6 @@
 from flask import Flask, render_template, jsonify, request, make_response
+import os
+import sys
 import uuid
 import threading
 import time
@@ -13,7 +15,15 @@ import port_scanner
 import service_detection
 import utils
 
-app = Flask(__name__)
+if getattr(sys, "frozen", False):
+    _BASE_DIR = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+    app = Flask(
+        __name__,
+        template_folder=os.path.join(_BASE_DIR, "templates"),
+        static_folder=os.path.join(_BASE_DIR, "static"),
+    )
+else:
+    app = Flask(__name__)
 
 # Global thread-safe task store for non-blocking asynchronous scans
 TASKS = {}
@@ -375,7 +385,13 @@ def get_all_tasks():
 
 
 if __name__ == "__main__":
+    from multiprocessing import freeze_support
+
+    freeze_support()
+    port = int(os.environ.get("PORTATLAS_PORT", "5000"))
+    host = os.environ.get("PORTATLAS_HOST", "127.0.0.1" if getattr(sys, "frozen", False) else "0.0.0.0")
+    debug = os.environ.get("PORTATLAS_DEBUG", "0") == "1" and not getattr(sys, "frozen", False)
     print("==========================================================")
-    print("🚀 PortAtlas Recon Dashboard Server starting on http://127.0.0.1:5000")
+    print(f"[+] PortAtlas Recon Dashboard Server starting on http://{host}:{port}")
     print("==========================================================")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host=host, port=port, debug=debug, use_reloader=False)
