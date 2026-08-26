@@ -1,6 +1,18 @@
 from flask import Flask, render_template, jsonify, request, make_response
 import os
 import sys
+import subprocess
+
+# Suppress console windows on Windows for all child subprocesses (nmap, route, ping, etc.)
+if sys.platform == "win32":
+    _CREATE_NO_WINDOW = 0x08000000
+    _orig_popen_init = subprocess.Popen.__init__
+
+    def _patched_popen_init(self, *args, **kwargs):
+        kwargs["creationflags"] = kwargs.get("creationflags", 0) | _CREATE_NO_WINDOW
+        _orig_popen_init(self, *args, **kwargs)
+
+    subprocess.Popen.__init__ = _patched_popen_init
 import uuid
 import threading
 import time
@@ -23,7 +35,21 @@ if getattr(sys, "frozen", False):
         static_folder=os.path.join(_BASE_DIR, "static"),
     )
 else:
+    _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     app = Flask(__name__)
+
+# Configure bundled Nmap executable path if present
+_NMAP_PATHS = [
+    os.path.join(_BASE_DIR, "nmap"),
+    os.path.join(os.path.dirname(sys.executable), "nmap"),
+    _BASE_DIR,
+]
+for _nmap_dir in _NMAP_PATHS:
+    if os.path.isfile(os.path.join(_nmap_dir, "nmap.exe")):
+        os.environ["PATH"] = _nmap_dir + os.path.pathsep + os.environ.get("PATH", "")
+        os.environ["NMAPDIR"] = _nmap_dir
+        os.environ["NMAPDATADIR"] = _nmap_dir
+        break
 
 # Global thread-safe task store for non-blocking asynchronous scans
 TASKS = {}
