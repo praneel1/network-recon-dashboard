@@ -232,9 +232,9 @@ async function fetchNetworkMetrics() {
             document.getElementById('portTargetIp').value = net.ipv4;
             document.getElementById('svcTargetIp').value = net.ipv4;
             document.getElementById('osTargetIp').value = net.ipv4;
-            document.getElementById('sslIp').value = net.ipv4;
-            document.getElementById('bannerIp').value = net.ipv4;
-            document.getElementById('httpIp').value = net.ipv4;
+            if (document.getElementById('sslIp')) document.getElementById('sslIp').value = net.ipv4;
+            if (document.getElementById('bannerIp')) document.getElementById('bannerIp').value = net.ipv4;
+            if (document.getElementById('httpIp')) document.getElementById('httpIp').value = net.ipv4;
         }
 
         const netGrid = document.getElementById('netDetailsGrid');
@@ -541,12 +541,22 @@ async function triggerSslInspect(btnEl) {
         const json = await res.json();
         if (json.success && json.ssl_info) {
             const cert = json.ssl_info;
-            document.getElementById('sslIssuer').innerText = `Issuer: ${cert.issuer || 'N/A'} | Subject: ${cert.subject || 'N/A'}`;
-            document.getElementById('sslValid').innerText = `Valid To: ${cert.valid_to || 'N/A'} | Cipher: ${cert.cipher || 'N/A'}`;
-            logToConsole(`SSL cert inspection completed for ${ip}:${port}.`, 'success');
+            if (cert.error) {
+                document.getElementById('sslIssuer').innerText = `Error: ${cert.error}`;
+                document.getElementById('sslValid').innerText = `--`;
+                logToConsole(`SSL inspect error for ${ip}:${port}: ${cert.error}`, 'error');
+            } else {
+                document.getElementById('sslIssuer').innerText = `Issuer: ${cert.issuer || 'N/A'}\nSubject: ${cert.subject || 'N/A'}`;
+                document.getElementById('sslValid').innerText = `Valid From: ${cert.valid_from || 'N/A'}\nValid To: ${cert.valid_to || 'N/A'}\nCipher: ${cert.cipher || 'N/A'}`;
+                logToConsole(`SSL cert inspection completed for ${ip}:${port}.`, 'success');
+            }
+        } else {
+            document.getElementById('sslIssuer').innerText = json.error || 'Failed to inspect cert';
+            document.getElementById('sslValid').innerText = `--`;
         }
     } catch (e) {
         logToConsole(`SSL inspect error: ${e.message}`, 'error');
+        document.getElementById('sslIssuer').innerText = `Error: ${e.message}`;
     } finally {
         setButtonLoading(btnEl || 'btnSslInspect', false);
     }
@@ -579,7 +589,8 @@ async function triggerBannerGrab(btnEl) {
 }
 
 async function triggerHttpInspect(btnEl) {
-    const ip = document.getElementById('httpIp').value;
+    const ipEl = document.getElementById('httpIp') || document.getElementById('bannerIp');
+    const ip = ipEl ? ipEl.value : '';
     if (!ip) return;
 
     const targetBtn = btnEl || 'btnHttpInspect';
@@ -593,13 +604,27 @@ async function triggerHttpInspect(btnEl) {
             body: JSON.stringify({ip: ip})
         });
         const json = await res.json();
-        if (json.success && json.http_info) {
+        if (json.success && json.http_info && typeof json.http_info === 'object') {
             const info = json.http_info;
-            logToConsole(`HTTP Inspect result: Server=${info.server}, PoweredBy=${info.powered_by}`, 'success');
-            document.getElementById('bannerOutput').innerText = `HTTP ${info.status} | Server: ${info.server || 'N/A'} | PoweredBy: ${info.powered_by || 'N/A'}`;
+            logToConsole(`HTTP Inspect result for ${ip}: ${info.protocol} ${info.status}`, 'success');
+
+            let outputText = `HTTP/${info.protocol} ${info.status} ${info.reason || ''}\n`;
+            outputText += `URL: ${info.url || ip}\n`;
+            outputText += `Server: ${info.server || 'N/A'}\n`;
+            outputText += `X-Powered-By: ${info.powered_by || 'N/A'}\n`;
+            outputText += `Content-Type: ${info.content_type || 'N/A'}\n`;
+            if (info.raw_headers) {
+                outputText += `\n--- HEADERS ---\n${info.raw_headers}`;
+            }
+            document.getElementById('bannerOutput').innerText = outputText;
+        } else {
+            const msg = (json.http_info && typeof json.http_info === 'string') ? json.http_info : 'No HTTP server responded / Connection failed.';
+            document.getElementById('bannerOutput').innerText = msg;
+            logToConsole(`HTTP Inspect: ${msg}`, 'warning');
         }
     } catch (e) {
         logToConsole(`HTTP inspect error: ${e.message}`, 'error');
+        document.getElementById('bannerOutput').innerText = `Error: ${e.message}`;
     } finally {
         setButtonLoading(targetBtn, false);
     }

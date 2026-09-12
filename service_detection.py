@@ -2,6 +2,8 @@ import nmap
 import socket
 import requests
 import ssl
+import tempfile
+import os
 from datetime import datetime
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
@@ -79,30 +81,73 @@ def detect_network_services(devices):
 # ==================================================
 
 def grab_banner(ip, port):
-    try:
-        with socket.create_connection((str(ip), port), timeout=3) as connection:
-            connection.settimeout(3)
-            return connection.recv(1024).decode(errors="ignore").strip()
+    target = str(ip).strip()
+    if target.startswith("http://"):
+        target = target[7:]
+    elif target.startswith("https://"):
+        target = target[8:]
+    if ":" in target and not target.count(":") > 1:
+        target = target.split(":")[0]
 
-    except Exception:
-        return None
+    try:
+        with socket.create_connection((target, int(port)), timeout=3) as connection:
+            connection.settimeout(3)
+            # Listen first for server-first banners (SSH, FTP, SMTP)
+            try:
+                banner = connection.recv(1024).decode(errors="ignore").strip()
+                if banner:
+                    return banner
+            except socket.timeout:
+                pass
+
+            # If client-first (e.g. HTTP, TCP), send a basic probe
+            if int(port) in (80, 443, 8080, 8443):
+                connection.sendall(b"HEAD / HTTP/1.0\r\n\r\n")
+            else:
+                connection.sendall(b"\r\n")
+
+            banner = connection.recv(1024).decode(errors="ignore").strip()
+            return banner if banner else "Connected, but no banner payload returned by server."
+    except Exception as e:
+        return f"Connection error: {str(e)}"
 
 def detect_http_server(ip):
-    for protocol in ("http", "https"):
+    target = str(ip).strip()
+    if target.startswith("http://"):
+        target = target[7:]
+    elif target.startswith("https://"):
+        target = target[8:]
+
+    for protocol in ("https", "http"):
         try:
-            response = requests.get(
-                f"{protocol}://{ip}",
-                timeout=5,
-                verify=False
+            url = f"{protocol}://{target}"
+            response = requests.head(
+                url,
+                timeout=4,
+                verify=False,
+                allow_redirects=True
             )
+            if response.status_code in (405, 501):
+                response = requests.get(
+                    url,
+                    timeout=4,
+                    verify=False,
+                    stream=True
+                )
+
+            headers_dict = dict(response.headers)
+            headers_str = "\n".join([f"{k}: {v}" for k, v in headers_dict.items()])
 
             return {
                 "protocol": protocol.upper(),
                 "status": response.status_code,
-                "server": response.headers.get("Server"),
-                "powered_by": response.headers.get("X-Powered-By")
+                "reason": response.reason,
+                "url": response.url,
+                "server": response.headers.get("Server") or "Unknown",
+                "powered_by": response.headers.get("X-Powered-By") or "N/A",
+                "content_type": response.headers.get("Content-Type") or "N/A",
+                "raw_headers": headers_str
             }
-
         except requests.RequestException:
             continue
 
@@ -126,25 +171,46 @@ def detect_os(ip):
     return None
 
 def inspect_ssl_cert(ip, port=443):
+    target = str(ip).strip()
+    if target.startswith("https://"):
+        target = target[8:]
+    elif target.startswith("http://"):
+        target = target[7:]
+    if ":" in target and not target.count(":") > 1:
+        target = target.split(":")[0]
+
     try:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
-        with socket.create_connection((str(ip), int(port)), timeout=4) as sock:
-            with ctx.wrap_socket(sock, server_hostname=str(ip)) as ssock:
-                cert = ssock.getpeercert(binary_form=False)
+
+        with socket.create_connection((target, int(port)), timeout=4) as sock:
+            with ctx.wrap_socket(sock, server_hostname=target) as ssock:
+                der_bytes = ssock.getpeercert(binary_form=True)
                 cipher = ssock.cipher()
-                if not cert:
+
+                if not der_bytes:
                     return {"status": "Active SSL/TLS", "cipher": cipher[0] if cipher else "Unknown"}
-                
-                issuer_dict = dict(x[0] for x in cert.get("issuer", []))
-                subject_dict = dict(x[0] for x in cert.get("subject", []))
-                
+
+                pem_str = ssl.DER_cert_to_PEM_cert(der_bytes)
+                with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+                    f.write(pem_str)
+                    temp_path = f.name
+
+                try:
+                    cert_dict = ssl._ssl._test_decode_cert(temp_path)
+                finally:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+
+                issuer_dict = dict(x[0] for x in cert_dict.get("issuer", []))
+                subject_dict = dict(x[0] for x in cert_dict.get("subject", []))
+
                 return {
                     "issuer": issuer_dict.get("organizationName") or issuer_dict.get("commonName") or "Unknown",
-                    "subject": subject_dict.get("commonName") or "Unknown",
-                    "valid_from": cert.get("notBefore"),
-                    "valid_to": cert.get("notAfter"),
+                    "subject": subject_dict.get("commonName") or subject_dict.get("organizationName") or "Unknown",
+                    "valid_from": cert_dict.get("notBefore"),
+                    "valid_to": cert_dict.get("notAfter"),
                     "cipher": cipher[0] if cipher else "Unknown"
                 }
     except Exception as e:

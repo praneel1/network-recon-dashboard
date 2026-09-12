@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,16 +18,17 @@
     <!-- D3.js for Interactive Network Topology -->
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 </head>
+
 <body>
     <div class="app-container">
         <!-- Top Bar with ASCII Banner -->
         <header class="top-bar glass-panel">
             <div class="brand">
                 <div class="ascii-header-banner">
-  ___  ___  ___ _____ _ _____ _    _   ___ 
- | _ \/ _ \| _ \_   _/_\_   _| |  /_\ / __|
- |  _/ (_) |   / | |/ _ \| | | |_/ _ \\__ \
- |_|  \___/|_|_\ |_/_/ \_\_| |___/_/ \_\___/ v3.0
+                    ___ ___ ___ _____ _ _____ _ _ ___
+                    | _ \/ _ \| _ \_ _/_\_ _| | /_\ / __|
+                    | _/ (_) | / | |/ _ \| | | |_/ _ \\__ \
+                    |_| \___/|_|_\ |_/_/ \_\_| |___/_/ \_\___/ v3.0
                 </div>
                 <div class="brand-text">
                     <h1>PORTATLAS RECON DASHBOARD</h1>
@@ -123,7 +125,10 @@
                 </div>
                 <div class="panel-body">
                     <div class="kv-grid" id="sysSpecsGrid">
-                        <div class="kv-item"><div class="kv-label">[HOSTNAME]</div><div class="kv-value">Loading...</div></div>
+                        <div class="kv-item">
+                            <div class="kv-label">[HOSTNAME]</div>
+                            <div class="kv-value">Loading...</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -132,16 +137,17 @@
         <!-- TAB 2: NETWORK INTERFACES -->
         <div id="tab-network" class="tab-content">
             <div class="grid-2">
+                <!--
                 <div class="glass-panel">
                     <div class="panel-header">
                         <div class="panel-title">┌─[ 02.1 // INTERFACE_PROPERTIES ]</div>
                     </div>
                     <div class="panel-body">
                         <div class="kv-grid" id="netDetailsGrid">
-                            <!-- Populated by JS -->
+                            Populated by JS
                         </div>
                     </div>
-                </div>
+                </div> -->
 
                 <div class="glass-panel">
                     <div class="panel-header">
@@ -150,14 +156,21 @@
                     <div class="panel-body">
                         <div class="control-bar" style="margin-bottom: 12px;">
                             <span class="prompt-symbol">$ ping</span>
-                            <input type="text" id="pingTargetIp" class="form-input" placeholder="8.8.8.8 or 192.168.1.1">
+                            <input type="text" id="pingTargetIp" class="form-input"
+                                placeholder="8.8.8.8 or 192.168.1.1">
                             <button class="btn btn-emerald" id="btnPing" onclick="executePing(this)">
                                 <i class="fa-solid fa-paper-plane"></i> Execute
                             </button>
                         </div>
                         <div class="kv-grid" id="pingResultGrid">
-                            <div class="kv-item"><div class="kv-label">[STATUS]</div><div class="kv-value">IDLE</div></div>
-                            <div class="kv-item"><div class="kv-label">[LATENCY]</div><div class="kv-value">--</div></div>
+                            <div class="kv-item">
+                                <div class="kv-label">[STATUS]</div>
+                                <div class="kv-value">IDLE</div>
+                            </div>
+                            <div class="kv-item">
+                                <div class="kv-label">[LATENCY]</div>
+                                <div class="kv-value">--</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -175,7 +188,7 @@
                     <div class="control-bar" style="margin-bottom: 8px;">
                         <span class="prompt-symbol">$ portatlas --lan</span>
                         <input type="text" id="lanCidrInput" class="form-input" placeholder="192.168.1.0/24">
-                        
+
                         <span class="prompt-symbol">--mode</span>
                         <select id="lanScanMode" class="form-select">
                             <option value="full">Full (ARP + Hostname)</option>
@@ -195,7 +208,8 @@
 
                     <!-- Progress Indicator -->
                     <div id="lanProgressBox" style="display: none; margin-bottom: 14px;">
-                        <div id="lanProgressBarTxt" class="ascii-progress-text">[░░░░░░░░░░░░░░░░░░░░] 0% -- Initializing LAN scan...</div>
+                        <div id="lanProgressBarTxt" class="ascii-progress-text">[░░░░░░░░░░░░░░░░░░░░] 0% --
+                            Initializing LAN scan...</div>
                     </div>
 
                     <!-- Device Table with MAC Vendor -->
@@ -213,7 +227,8 @@
                             </thead>
                             <tbody id="lanDeviceTableBody">
                                 <tr>
-                                    <td colspan="6" style="text-align: center; color: var(--text-dim);">No devices discovered yet. Execute "$ portatlas --lan" to run a scan.</td>
+                                    <td colspan="6" style="text-align: center; color: var(--text-dim);">No devices
+                                        discovered yet. Execute "$ portatlas --lan" to run a scan.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -228,7 +243,8 @@
                     <span class="badge badge-info">[D3.JS FORCE GRAPH]</span>
                 </div>
                 <div class="panel-body">
-                    <div style="width: 100%; height: 350px; background: #050308; border: 1px solid var(--border-color); border-radius: 4px; position: relative; overflow: hidden;">
+                    <div
+                        style="width: 100%; height: 350px; background: #050308; border: 1px solid var(--border-color); border-radius: 4px; position: relative; overflow: hidden;">
                         <svg id="topologySvg" style="width: 100%; height: 100%;"></svg>
                     </div>
                 </div>
@@ -245,7 +261,7 @@
                     <div class="control-bar" style="margin-bottom: 12px;">
                         <span class="prompt-symbol">$ scan_ports -t</span>
                         <input type="text" id="portTargetIp" class="form-input" placeholder="192.168.1.1">
-                        
+
                         <span class="prompt-symbol">-range</span>
                         <select id="portScanType" class="form-select" onchange="toggleCustomPortInput()">
                             <option value="common">Common Ports (14 Ports)</option>
@@ -263,7 +279,8 @@
                             <option value="1">T1 (Paranoid Stealth)</option>
                         </select>
 
-                        <input type="text" id="customPortList" class="form-input" placeholder="80,443,8080" style="display: none;">
+                        <input type="text" id="customPortList" class="form-input" placeholder="80,443,8080"
+                            style="display: none;">
 
                         <button class="btn btn-purple" id="btnPortScan" onclick="triggerPortScan(this)">
                             <i class="fa-solid fa-crosshairs"></i> Run Scan
@@ -272,7 +289,8 @@
 
                     <!-- Progress Indicator -->
                     <div id="portProgressBox" style="display: none; margin-bottom: 14px;">
-                        <div id="portProgressBarTxt" class="ascii-progress-text">[░░░░░░░░░░░░░░░░░░░░] 0% -- Auditing ports...</div>
+                        <div id="portProgressBarTxt" class="ascii-progress-text">[░░░░░░░░░░░░░░░░░░░░] 0% -- Auditing
+                            ports...</div>
                     </div>
 
                     <!-- Results Table -->
@@ -288,7 +306,8 @@
                             </thead>
                             <tbody id="portResultsTableBody">
                                 <tr>
-                                    <td colspan="4" style="text-align: center; color: var(--text-dim);">No port scan performed yet.</td>
+                                    <td colspan="4" style="text-align: center; color: var(--text-dim);">No port scan
+                                        performed yet.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -314,7 +333,7 @@
                                 <i class="fa-solid fa-shield-halved"></i> Detect
                             </button>
                         </div>
-                        
+
                         <div id="svcResultsBox" class="table-responsive" style="margin-top: 12px;">
                             <table class="custom-table">
                                 <thead>
@@ -326,7 +345,10 @@
                                     </tr>
                                 </thead>
                                 <tbody id="svcTableBody">
-                                    <tr><td colspan="4" style="text-align:center; color: var(--text-dim);">Enter target IP & ports to analyze.</td></tr>
+                                    <tr>
+                                        <td colspan="4" style="text-align:center; color: var(--text-dim);">Enter target
+                                            IP & ports to analyze.</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -341,15 +363,18 @@
                     <div class="panel-body">
                         <!-- OS Fingerprint Widget -->
                         <div style="margin-bottom: 16px;">
-                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[NMAP PASSIVE OS FINGERPRINTING (-O)]</h4>
+                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[NMAP PASSIVE OS
+                                FINGERPRINTING (-O)]</h4>
                             <div class="control-bar">
                                 <span class="prompt-symbol">$ nmap -O</span>
                                 <input type="text" id="osTargetIp" class="form-input" placeholder="Target IP">
-                                <button class="btn btn-sm btn-purple" id="btnOsDetect" onclick="triggerOsDetect(this)">Detect OS</button>
+                                <button class="btn btn-sm btn-purple" id="btnOsDetect"
+                                    onclick="triggerOsDetect(this)">Detect OS</button>
                             </div>
                             <div class="kv-item" style="margin-top: 8px;">
                                 <div class="kv-label">[DETECTED OS MATCH]</div>
-                                <div id="osOutput" class="kv-value" style="font-size: 11px; color: var(--accent-orange);">--</div>
+                                <div id="osOutput" class="kv-value"
+                                    style="font-size: 11px; color: var(--accent-orange);">--</div>
                             </div>
                         </div>
 
@@ -357,16 +382,26 @@
 
                         <!-- SSL Certificate Inspector Widget -->
                         <div style="margin-bottom: 16px;">
-                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[SSL/TLS CERTIFICATE INSPECTOR]</h4>
+                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[SSL/TLS
+                                CERTIFICATE INSPECTOR]</h4>
                             <div class="control-bar">
                                 <span class="prompt-symbol">$ openssl s_client</span>
-                                <input type="text" id="sslIp" class="form-input" placeholder="IP" style="min-width: 120px;">
-                                <input type="number" id="sslPort" class="form-input" placeholder="443" style="min-width: 65px;" value="443">
-                                <button class="btn btn-sm btn-emerald" id="btnSslInspect" onclick="triggerSslInspect(this)">Inspect Cert</button>
+                                <input type="text" id="sslIp" class="form-input" placeholder="IP"
+                                    style="min-width: 120px;">
+                                <input type="number" id="sslPort" class="form-input" placeholder="443"
+                                    style="min-width: 65px;" value="443">
+                                <button class="btn btn-sm btn-emerald" id="btnSslInspect"
+                                    onclick="triggerSslInspect(this)">Inspect Cert</button>
                             </div>
                             <div class="kv-grid" id="sslResultGrid" style="margin-top: 8px;">
-                                <div class="kv-item"><div class="kv-label">[ISSUER / SUBJECT]</div><div class="kv-value" id="sslIssuer">--</div></div>
-                                <div class="kv-item"><div class="kv-label">[VALIDITY / CIPHER]</div><div class="kv-value" id="sslValid">--</div></div>
+                                <div class="kv-item">
+                                    <div class="kv-label">[ISSUER / SUBJECT]</div>
+                                    <div class="kv-value" id="sslIssuer">--</div>
+                                </div>
+                                <div class="kv-item">
+                                    <div class="kv-label">[VALIDITY / CIPHER]</div>
+                                    <div class="kv-value" id="sslValid">--</div>
+                                </div>
                             </div>
                         </div>
 
@@ -374,19 +409,31 @@
 
                         <!-- Banner & HTTP Inspector -->
                         <div>
-                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[BANNER & HTTP INSPECTOR]</h4>
-                            <div class="control-bar">
-                                <span class="prompt-symbol">$ nc -v</span>
-                                <input type="text" id="bannerIp" class="form-input" placeholder="IP" style="min-width: 100px;">
-                                <input type="number" id="bannerPort" class="form-input" placeholder="22" style="min-width: 60px;" value="22">
-                                <button class="btn btn-sm btn-emerald" id="btnBannerGrab" onclick="triggerBannerGrab(this)">Banner</button>
-                                
-                                <span class="prompt-symbol">$ curl -I</span>
-                                <button class="btn btn-sm btn-purple" id="btnHttpInspect" onclick="triggerHttpInspect(this)">HTTP Header</button>
+                            <h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">[BANNER & HTTP
+                                INSPECTOR]</h4>
+                            <div class="control-bar" style="flex-wrap: wrap; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="prompt-symbol">$ nc -v</span>
+                                    <input type="text" id="bannerIp" class="form-input" placeholder="IP / Host"
+                                        style="min-width: 110px;">
+                                    <input type="number" id="bannerPort" class="form-input" placeholder="22"
+                                        style="min-width: 60px;" value="22">
+                                    <button class="btn btn-sm btn-emerald" id="btnBannerGrab"
+                                        onclick="triggerBannerGrab(this)">Banner</button>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="prompt-symbol">$ curl -I</span>
+                                    <input type="text" id="httpIp" class="form-input" placeholder="IP / Host"
+                                        style="min-width: 110px;">
+                                    <button class="btn btn-sm btn-purple" id="btnHttpInspect"
+                                        onclick="triggerHttpInspect(this)">HTTP Header</button>
+                                </div>
                             </div>
                             <div class="kv-item" style="margin-top: 8px;">
                                 <div class="kv-label">[RAW RESULT]</div>
-                                <div id="bannerOutput" class="kv-value" style="font-size: 11px; color: #34d399;">--</div>
+                                <div id="bannerOutput" class="kv-value"
+                                    style="font-size: 11px; color: #34d399; white-space: pre-wrap; word-break: break-all;">--
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -400,14 +447,18 @@
                 <div class="panel-header">
                     <div class="panel-title">┌─[ 06.1 // REALTIME_SCAN_CONSOLE_&_EXPORTS ]</div>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-sm" onclick="clearConsole()"><i class="fa-solid fa-trash"></i> Clear</button>
-                        <button class="btn btn-sm btn-emerald" onclick="exportReconReport()"><i class="fa-solid fa-file-code"></i> Export JSON</button>
-                        <button class="btn btn-sm btn-purple" onclick="exportHtmlReport()"><i class="fa-solid fa-file-pdf"></i> Export HTML Report</button>
+                        <button class="btn btn-sm" onclick="clearConsole()"><i class="fa-solid fa-trash"></i>
+                            Clear</button>
+                        <button class="btn btn-sm btn-emerald" onclick="exportReconReport()"><i
+                                class="fa-solid fa-file-code"></i> Export JSON</button>
+                        <button class="btn btn-sm btn-purple" onclick="exportHtmlReport()"><i
+                                class="fa-solid fa-file-pdf"></i> Export HTML Report</button>
                     </div>
                 </div>
                 <div class="panel-body">
                     <div class="terminal-box" id="terminalConsole">
-                        <div class="terminal-line info">[SYS] PortAtlas Terminal Console active. Log stream initialized.</div>
+                        <div class="terminal-line info">[SYS] PortAtlas Terminal Console active. Log stream initialized.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -417,4 +468,5 @@
     <!-- Custom JS Script -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
+
 </html>
