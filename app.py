@@ -278,12 +278,9 @@ def api_scan_services():
 def api_scan_ssl():
     """Inspects SSL/TLS Certificate on target host and port."""
     req = request.get_json(silent=True) or {}
-    target_ip = req.get("ip")
-    port = req.get("port", 443)
+    target_ip = req.get("ip") or "badssl.com"
+    port = int(req.get("port", 443) or 443)
     
-    if not target_ip:
-        return jsonify({"success": False, "error": "Target IP required."}), 400
-
     try:
         ssl_data = service_detection.inspect_ssl_cert(target_ip, port)
         return jsonify({"success": True, "ip": target_ip, "port": port, "ssl_info": ssl_data})
@@ -310,11 +307,8 @@ def api_scan_os():
 def api_scan_banner():
     """Grabs TCP banner from target IP and port."""
     req = request.get_json(silent=True) or {}
-    target_ip = req.get("ip")
-    port = req.get("port")
-    
-    if not target_ip or not port:
-        return jsonify({"success": False, "error": "IP and Port required."}), 400
+    target_ip = req.get("ip") or "httpbin.org"
+    port = int(req.get("port", 80) or 80)
         
     try:
         banner = service_detection.grab_banner(target_ip, int(port))
@@ -327,10 +321,7 @@ def api_scan_banner():
 def api_scan_http():
     """Analyzes HTTP headers on target host."""
     req = request.get_json(silent=True) or {}
-    target_ip = req.get("ip")
-    
-    if not target_ip:
-        return jsonify({"success": False, "error": "Target IP required."}), 400
+    target_ip = req.get("ip") or "httpbin.org"
 
     try:
         http_data = service_detection.detect_http_server(target_ip)

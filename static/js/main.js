@@ -232,9 +232,9 @@ async function fetchNetworkMetrics() {
             document.getElementById('portTargetIp').value = net.ipv4;
             document.getElementById('svcTargetIp').value = net.ipv4;
             document.getElementById('osTargetIp').value = net.ipv4;
-            if (document.getElementById('sslIp')) document.getElementById('sslIp').value = net.ipv4;
-            if (document.getElementById('bannerIp')) document.getElementById('bannerIp').value = net.ipv4;
-            if (document.getElementById('httpIp')) document.getElementById('httpIp').value = net.ipv4;
+            if (document.getElementById('sslIp') && !document.getElementById('sslIp').value) document.getElementById('sslIp').value = net.ipv4;
+            if (document.getElementById('bannerIp') && !document.getElementById('bannerIp').value) document.getElementById('bannerIp').value = net.ipv4;
+            if (document.getElementById('httpIp') && !document.getElementById('httpIp').value) document.getElementById('httpIp').value = net.ipv4;
         }
 
         const netGrid = document.getElementById('netDetailsGrid');

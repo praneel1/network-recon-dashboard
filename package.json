@@ -10,10 +10,10 @@
     "dist": "npm run build:py && electron-builder --win portable"
   },
   "devDependencies": {
-    "@electron/packager": "^20.3.0",
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
-    "wait-port": "^1.1.0"
+    "@electron/packager": "20.3.0",
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8",
+    "wait-port": "1.1.0"
   },
   "build": {
     "appId": "com.portatlas.dashboard",

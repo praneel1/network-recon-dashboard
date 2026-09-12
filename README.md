@@ -22,18 +22,26 @@ It integrates all custom network scanning, device discovery, port scanning, serv
 ## 🛠️ Local Installation & Setup
 
 1. **Clone the repository**: ```git clone ...```
-2. **Install Dependencies**:
+2. **create a virtual env**: 
+```bash
+   uv venv   
+   # OR with pip:
+   python -m venv venv
+```
+3. **Install Dependencies**:
    ```bash
    uv pip install -r requirements.txt
+   npm install
    # OR with pip:
    pip install -r requirements.txt
+   npm install
    ```
 
-3. **Ensure Nmap is Installed** (Recommended for advanced port scanning and service detection):
+4. **Ensure Nmap is Installed** (Recommended for advanced port scanning and service detection):
    - **Windows**: Download & install Nmap from [nmap.org](https://nmap.org/download.html). Ensure `nmap.exe` is added to system `PATH`.
    - **Linux / macOS**: `sudo apt update && sudo apt install -y nmap` or `brew install nmap`.
 
-4. **Run Dashboard**:
+5. **Run Dashboard**:
    ```bash
    uv run python app.py
    # OR with python:
