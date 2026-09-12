@@ -1,5 +1,9 @@
 # 📡 NetRecon - Network Reconnaissance Dashboard
 
+> 🛡️ **Cyber Security Project** | **Rakshna MAIT**  
+> Developed by **Praneel** & **Sutanu Kumar Das** for **Rakshna**, the Cyber Security Society of MAIT.  
+> 📊 **Project Presentation**: [View on Google Drive](https://drive.google.com/file/d/1QgMfcjG0b5K07Tg7_Bc4LsRW-uXJTmnx/view?usp=sharing)
+
 NetRecon is a high-performance, lightweight network reconnaissance & telemetry dashboard built with Python (Flask) and a modern Glassmorphism Single Page Interface.
 
 It integrates all custom network scanning, device discovery, port scanning, service detection, and hardware telemetry modules seamlessly without blocking the web UI thread.
@@ -74,3 +78,20 @@ shit43_network/
 ├── Procfile                # WSGI Production app declaration
 └── README.md               # Documentation
 ```
+
+---
+
+## 👥 Team & Society
+
+This project was built as a Cyber Security initiative for **Rakshna MAIT** (Cyber Security Society of Maharaja Agrasen Institute of Technology).
+
+### 🛡️ Contributors
+- **Praneel**
+- **Sutanu Kumar Das**
+
+---
+
+## 📽️ Project Presentation
+- 📊 **Presentation Slides (PPT)**: [View on Google Drive](https://drive.google.com/file/d/1QgMfcjG0b5K07Tg7_Bc4LsRW-uXJTmnx/view?usp=sharing)
+
+
